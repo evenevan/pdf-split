@@ -1,9 +1,9 @@
 {
     "extends": "@tsconfig/strictest/tsconfig.json",
     "compilerOptions": {
+        "outDir": "./dist/",
         "target": "ES6",
-        "module": "Node16",
-        "moduleResolution": "node16",
+        "moduleResolution": "bundler",
         "allowJs": false,
         "checkJs": false,
         "sourceMap": true,
