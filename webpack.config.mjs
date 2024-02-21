@@ -31,4 +31,8 @@ export default {
         path: path.resolve(__dirname, 'dist'),
         clean: true,
     },
+    watchOptions: {
+        aggregateTimeout: 500,
+        poll: 1000,
+    },
 };

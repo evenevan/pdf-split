@@ -19,15 +19,22 @@ formElement.onsubmit = (async (event) => {
 
     const pdfjsPDF = await pdfjs.getDocument(await inputFile.arrayBuffer()).promise;
     const outline = await pdfjsPDF.getOutline();
+    const metadata = await pdfjsPDF.getMetadata();
+    // @ts-ignore
+    const version: string | null = metadata.info.PDFFormatVersion ?? null;
 
-    console.log(await pdfjsPDF.getMetadata());
+    // console.log(await pdfjsPDF.getMetadata());
 
     if (!outline) {
-        outputElement.textContent = 'No outline found, cannot proceed';
+        outputElement.textContent = 'No PDF outline found, cannot proceed.';
         return;
     }
 
-    outputElement.textContent = 'Processing...';
+    if (Number(version) <= 1.4) {
+        outputElement.textContent = `Warning: PDF version is ${version}. You may experience issues, try upgrading PDF versions. `;
+    }
+
+    outputElement.textContent += 'Processing...';
 
     const pageSections = await pdfToPageSections(pdfjsPDF, outline);
     const pdfLibPDF = await PDFDocument.load(await inputFile.arrayBuffer());
@@ -39,5 +46,5 @@ formElement.onsubmit = (async (event) => {
     });
 
     saveAs(await downloadZip(outputFiles).blob(), 'splitPDFs.zip');
-    outputElement.textContent = '';
+    outputElement.textContent += ' Done.';
 });
