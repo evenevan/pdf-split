@@ -6,7 +6,8 @@
         <title>PDF Split</title>
     </head>
     <body>
-        <p>Split a PDF by its outline into sub-PDF files.</p>
+        <p>Split a PDF by its outline into sub-PDF files. Proof of concept.</p>
+        <a href="https://github.com/attituding/pdf-split">https://github.com/attituding/pdf-split</a>
         <p>Known issues: </p>
         <ul>
             <li
@@ -19,6 +20,7 @@
                 last section.</li
             >
             <li>Sections in the outline with the same name will break.</li>
+            <li>The outputs .zip file of some (not all) PDFs are reported as corrupt by Windows. I do not know why. Try 7-Zip to unzip if this is the case.</li>
             <li>Various other edge cases and weird behavior.</li>
         </ul>
         <div>
@@ -33,7 +35,7 @@
                     <br>
                     <input type="number" id="level" value="3" min="1" required />
                     <br>
-                    <span style="font-size: 12px;">Split level refers to how many levels the output should have, maximum</span>
+                    <span style="font-size: 12px;">Split level refers to how many levels the output should have, maximum.</span>
                 </div>
                 <div>
                     <input type="submit" value="Split" />

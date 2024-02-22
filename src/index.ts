@@ -37,10 +37,14 @@ formElement.onsubmit = (async (event) => {
 
     outputElement.textContent += 'Processing...';
 
-    const pageSections = await pdfToPageSections(pdfjsPDF, outline, Number(levelElement.value));
+    outputElement.textContent += ' Loading PDF...';
     const pdfLibPDF = await PDFDocument.load(await inputFile.arrayBuffer());
+    outputElement.textContent += ' Generating sub-PDF files...';
+    const pageSections = await pdfToPageSections(pdfjsPDF, outline, Number(levelElement.value));
     const splitPDFs = await pageSectionsToPDFTree(pdfLibPDF, pageSections);
     const outputFiles: InputWithSizeMeta[] = [];
+
+    outputElement.textContent += ' Creating zip...';
 
     await savePDFTree(splitPDFs, '', (path, bytes) => {
         outputFiles.push({ name: path, input: bytes });
