@@ -23,10 +23,20 @@
         </ul>
         <div>
             <form id="form">
-                <label for="pdf">Choose PDF to split</label>
-                <input type="file" id="pdf" accept=".pdf" required />
+                <div style="margin-bottom: 10px;">
+                    <label for="pdf">PDF</label>
+                    <br>
+                    <input type="file" id="pdf" accept=".pdf" required />
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label for="level">Split Level</label>
+                    <br>
+                    <input type="number" id="level" value="3" min="1" required />
+                    <br>
+                    <span style="font-size: 12px;">Split level refers to how many levels the output should have, maximum</span>
+                </div>
                 <div>
-                    <button>Submit</button>
+                    <input type="submit" value="Split" />
                 </div>
             </form>
             <p id="output"></p>

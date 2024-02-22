@@ -101,9 +101,9 @@ export const savePDFTree = async (pdf: PDFTree, path: string, save: (path: strin
     }
 };
 
-export const pdfToPageSections = async (pdf: pdfjs.PDFDocumentProxy, outline: Awaited<ReturnType<pdfjs.PDFDocumentProxy['getOutline']>>) => {
+export const pdfToPageSections = async (pdf: pdfjs.PDFDocumentProxy, outline: Awaited<ReturnType<pdfjs.PDFDocumentProxy['getOutline']>>, maximumLevel: number) => {
     // must have a non-null outline else will fail
-    const ranges = await pdfToPageSectionsHelper(pdf, outline, pdf.numPages + 1, 3);
+    const ranges = await pdfToPageSectionsHelper(pdf, outline, pdf.numPages + 1, maximumLevel);
     const firstChildPage = getFirstPage(ranges[0]);
     // ascending order page numbers (1-indexed)
     // assuming at least 1 child

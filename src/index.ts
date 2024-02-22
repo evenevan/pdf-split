@@ -10,6 +10,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const formElement = document.getElementById('form') as HTMLFormElement;
 const fileElement = document.getElementById('pdf') as HTMLInputElement;
+const levelElement = document.getElementById('level') as HTMLInputElement;
 const outputElement = document.getElementById('output') as HTMLParagraphElement;
 
 formElement.onsubmit = (async (event) => {
@@ -36,7 +37,7 @@ formElement.onsubmit = (async (event) => {
 
     outputElement.textContent += 'Processing...';
 
-    const pageSections = await pdfToPageSections(pdfjsPDF, outline);
+    const pageSections = await pdfToPageSections(pdfjsPDF, outline, Number(levelElement.value));
     const pdfLibPDF = await PDFDocument.load(await inputFile.arrayBuffer());
     const splitPDFs = await pageSectionsToPDFTree(pdfLibPDF, pageSections);
     const outputFiles: InputWithSizeMeta[] = [];

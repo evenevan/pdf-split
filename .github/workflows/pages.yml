@@ -16,7 +16,7 @@ jobs:
             - name: Build
               run: |
                   npm i
-                  npm run build
+                  npm run build -- --mode production
 
             - name: Deploy
               uses: JamesIves/github-pages-deploy-action@v4
