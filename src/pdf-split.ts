@@ -1,14 +1,13 @@
-/* eslint-disable max-len */
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocument } from 'pdf-lib';
-// import fs from 'fs';
 
+/* eslint-disable max-len */
 /* eslint-disable no-await-in-loop */
 
-export interface Sections {
+export interface Section {
     title: string;
     pages: number[];
-    children: Sections[];
+    children: Section[];
 }
 
 export interface PDFTree {
@@ -16,9 +15,16 @@ export interface PDFTree {
     children: PDFTree[];
 }
 
+interface Item {
+    title: Awaited<ReturnType<pdfjs.PDFDocumentProxy['getOutline']>>[number]['title'],
+    dest: Awaited<ReturnType<pdfjs.PDFDocumentProxy['getOutline']>>[number]['dest'] | number,
+    items: Item[],
+}
+
 // inclusive of start and end
 export const sequence = (start: number, end: number) => Array.from({ length: end - start + 1 }, (_, i) => start + i);
-const getFirstPage = (range?: Sections) => {
+
+const getFirstPage = (range?: Section) => {
     if (!range) {
         return null;
     }
@@ -31,48 +37,49 @@ const getFirstPage = (range?: Sections) => {
 
     return currRange.pages[0];
 };
-export const pdfToPageSectionsHelper = async (pdf: pdfjs.PDFDocumentProxy, items: Awaited<ReturnType<pdfjs.PDFDocumentProxy['getOutline']>>, endpoint: number, level: number) => {
-    if (items.length === 0 || level === 0) {
-        return [];
+
+export const itemToSection = async (pdf: pdfjs.PDFDocumentProxy, item: Item, endpoint: number, level: number): Promise<Section> => {
+    // 1-indexed
+    const itemPageIndex = typeof item.dest === 'number'
+        ? item.dest
+        : await pdf.getPageIndex(
+            (Array.isArray(item.dest)
+                ? item.dest
+                : await pdf.getDestination(item.dest as string))![0],
+        ) + 1;
+
+    if (level === 0) {
+        return {
+            title: item.title,
+            pages: sequence(itemPageIndex, endpoint - 1),
+            children: [],
+        };
     }
 
-    // ascending order
-    const currRanges: Sections[] = [];
+    const children: Section[] = [];
     let currEndpoint = endpoint;
 
-    // start from the back in order to the the endpoint for the "next" range
     // eslint-disable-next-line no-restricted-syntax
-    for (const item of items.reverse()) {
-        const destination = Array.isArray(item.dest)
-            ? item.dest
-            : await pdf.getDestination(item.dest as string);
-        // 1-indexed
-        const page = await pdf.getPageIndex(destination![0]) + 1;
-        const childRanges = (await pdfToPageSectionsHelper(pdf, item.items, currEndpoint, level - 1));
-        const childFirstPage = getFirstPage(childRanges[0]);
-
-        // ascending order page numbers (1-indexed)
-        const newRange = sequence(page, (childFirstPage ?? currEndpoint) - 1);
-
-        currRanges.unshift({
-            title: item.title,
-            pages: newRange,
-            children: childRanges,
-        });
-
-        currEndpoint = page;
+    for (const childItem of item.items.reverse()) {
+        const section = await itemToSection(pdf, childItem, currEndpoint, level - 1);
+        children.unshift(section);
+        currEndpoint = getFirstPage(section)!;
     }
 
-    return currRanges;
+    return {
+        title: item.title,
+        pages: sequence(itemPageIndex, currEndpoint - 1),
+        children: children,
+    };
 };
 
-export const pageSectionsToPDFTree = async (pdf: PDFDocument, range: Sections): Promise<PDFTree> => {
+export const sectionToPDFTree = async (pdf: PDFDocument, section: Section): Promise<PDFTree> => {
     const newPDF = await PDFDocument.create();
-    newPDF.setTitle(range.title);
-    const copiedPages = await newPDF.copyPages(pdf, range.pages.map((page) => page - 1));
+    newPDF.setTitle(section.title);
+    const copiedPages = await newPDF.copyPages(pdf, section.pages.map((page) => page - 1));
     copiedPages.forEach((page) => newPDF.addPage(page));
 
-    const childPDFs = await Promise.all(range.children.map((child) => pageSectionsToPDFTree(pdf, child)));
+    const childPDFs = await Promise.all(section.children.map((child) => sectionToPDFTree(pdf, child)));
 
     return {
         pdf: newPDF,
@@ -101,20 +108,14 @@ export const savePDFTree = async (pdf: PDFTree, path: string, save: (path: strin
     }
 };
 
-export const pdfToPageSections = async (pdf: pdfjs.PDFDocumentProxy, outline: Awaited<ReturnType<pdfjs.PDFDocumentProxy['getOutline']>>, maximumLevel: number) => {
-    // must have a non-null outline else will fail
-    const ranges = await pdfToPageSectionsHelper(pdf, outline, pdf.numPages + 1, maximumLevel);
-    const firstChildPage = getFirstPage(ranges[0]);
-    // ascending order page numbers (1-indexed)
-    // assuming at least 1 child
-    const pages = sequence(1, (firstChildPage ?? pdf.numPages + 1) - 1);
+export const outlineToSections = async (pdf: pdfjs.PDFDocumentProxy, outline: Item[], maximumLevel: number): Promise<Section> => {
     const metadata = await pdf.getMetadata();
-    const document: Sections = {
+    const mainItem = {
         // @ts-ignore
         title: metadata.info.Title ?? metadata.get('dc:title') ?? 'Title',
-        pages: pages,
-        children: ranges,
-    };
+        items: outline,
+        dest: 1, // little hack; starting page index (1-indexed)
+    } as Item;
 
-    return document;
+    return itemToSection(pdf, mainItem, pdf.numPages + 1, maximumLevel);
 };

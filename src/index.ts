@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs';
 import { downloadZip, InputWithSizeMeta } from 'client-zip';
 import { saveAs } from 'file-saver';
-import { pageSectionsToPDFTree, pdfToPageSections, savePDFTree } from './pdf-split';
+import { outlineToSections, savePDFTree, sectionToPDFTree } from './pdf-split';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -14,42 +14,43 @@ const levelElement = document.getElementById('level') as HTMLInputElement;
 const outputElement = document.getElementById('output') as HTMLParagraphElement;
 
 formElement.onsubmit = (async (event) => {
-    outputElement.textContent = '';
+    outputElement.textContent = 'Processing...';
     event.preventDefault();
     const inputFile = fileElement.files!.item(0)!;
 
     const pdfjsPDF = await pdfjs.getDocument(await inputFile.arrayBuffer()).promise;
     const outline = await pdfjsPDF.getOutline();
     const metadata = await pdfjsPDF.getMetadata();
-    // @ts-ignore
-    const version: string | null = metadata.info.PDFFormatVersion ?? null;
 
     // console.log(await pdfjsPDF.getMetadata());
 
     if (!outline) {
-        outputElement.textContent = 'No PDF outline found, cannot proceed.';
+        outputElement.textContent += ' No PDF outline found, cannot proceed.';
         return;
     }
 
-    if (Number(version) <= 1.4) {
-        outputElement.textContent = `Warning: PDF version is ${version}. You may experience issues, try upgrading PDF versions. `;
-    }
+    // @ts-ignore
+    const version: string | null = metadata.info.PDFFormatVersion ?? null;
 
-    outputElement.textContent += 'Processing...';
+    if (Number(version) <= 1.4) {
+        outputElement.textContent += ` Warning: PDF version is ${version}. If you may experience issues, try upgrading PDF versions.`;
+    }
 
     outputElement.textContent += ' Loading PDF...';
     const pdfLibPDF = await PDFDocument.load(await inputFile.arrayBuffer());
     outputElement.textContent += ' Generating sub-PDF files...';
-    const pageSections = await pdfToPageSections(pdfjsPDF, outline, Number(levelElement.value));
-    const splitPDFs = await pageSectionsToPDFTree(pdfLibPDF, pageSections);
+    const sections = await outlineToSections(pdfjsPDF, outline, Number(levelElement.value));
+    const splitPDFs = await sectionToPDFTree(pdfLibPDF, sections);
     const outputFiles: InputWithSizeMeta[] = [];
 
     outputElement.textContent += ' Creating zip...';
 
-    await savePDFTree(splitPDFs, '', (path, bytes) => {
-        outputFiles.push({ name: path, input: bytes });
-    });
+    await Promise.all(
+        splitPDFs.children.map((child) => savePDFTree(child, '', (path, bytes) => {
+            outputFiles.push({ name: path, input: bytes });
+        })),
+    );
 
-    saveAs(await downloadZip(outputFiles).blob(), 'splitPDFs.zip');
+    saveAs(await downloadZip(outputFiles).blob(), `${inputFile.name.replace('.pdf', '')}_split.zip`);
     outputElement.textContent += ' Done.';
 });
