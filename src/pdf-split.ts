@@ -24,18 +24,18 @@ interface Item {
 // inclusive of start and end
 export const sequence = (start: number, end: number) => Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
-const getFirstPage = (range?: Section) => {
-    if (!range) {
+const getFirstPage = (section?: Section) => {
+    if (!section) {
         return null;
     }
 
-    let currRange = range;
+    let currSection = section;
 
-    while (currRange.children.length > 0 && currRange.pages.length === 0) {
-        currRange = currRange.children[0]!;
+    while (currSection.children.length > 0 && currSection.pages.length === 0) {
+        currSection = currSection.children[0]!;
     }
 
-    return currRange.pages[0];
+    return currSection.pages[0];
 };
 
 export const itemToSection = async (pdf: pdfjs.PDFDocumentProxy, item: Item, endpoint: number, level: number): Promise<Section> => {
@@ -51,7 +51,7 @@ export const itemToSection = async (pdf: pdfjs.PDFDocumentProxy, item: Item, end
     if (level === 0) {
         return {
             title: item.title,
-            pages: sequence(itemPageIndex, endpoint - 1),
+            pages: sequence(itemPageIndex, endpoint),
             children: [],
         };
     }
@@ -62,13 +62,19 @@ export const itemToSection = async (pdf: pdfjs.PDFDocumentProxy, item: Item, end
     // eslint-disable-next-line no-restricted-syntax
     for (const childItem of item.items.reverse()) {
         const section = await itemToSection(pdf, childItem, currEndpoint, level - 1);
+
+        if (section.pages.length === 0 && section.children.length === 0) {
+            section.pages.push(currEndpoint + 1);
+        }
+
         children.unshift(section);
-        currEndpoint = getFirstPage(section)!;
+        // it is known that getFirstPage will always yield a value given this setup
+        currEndpoint = getFirstPage(section)! - 1;
     }
 
     return {
         title: item.title,
-        pages: sequence(itemPageIndex, currEndpoint - 1),
+        pages: sequence(itemPageIndex, currEndpoint),
         children: children,
     };
 };
@@ -117,5 +123,5 @@ export const outlineToSections = async (pdf: pdfjs.PDFDocumentProxy, outline: It
         dest: 1, // little hack; starting page index (1-indexed)
     } as Item;
 
-    return itemToSection(pdf, mainItem, pdf.numPages + 1, maximumLevel);
+    return itemToSection(pdf, mainItem, pdf.numPages, maximumLevel);
 };
