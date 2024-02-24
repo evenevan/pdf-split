@@ -93,14 +93,16 @@ export const sectionToPDFTree = async (pdf: PDFDocument, section: Section): Prom
     };
 };
 
-export const savePDFTree = async (pdf: PDFTree, path: string, save: (path: string, bytes: Uint8Array) => Promise<void> | void) => {
-    const title = (pdf.pdf.getTitle() ?? '').replace(/[/\\?%*:|"<>]/g, '-');
+// can't say this is my finest work (arrays are slow) but this is javascript anyways
+export const savePDFTree = async (pdf: PDFTree, save: (path: string[], bytes: Uint8Array) => Promise<void> | void, path: string[] = []) => {
+    const title = pdf.pdf.getTitle()!;
 
     // eslint-disable-next-line no-restricted-syntax
     for (const children of pdf.children) {
-        await savePDFTree(children, `${path}/${title}`, save);
+        await savePDFTree(children, save, [...path, title]);
     }
 
+    // ignore blank/empty pdfs
     if (pdf.pdf.getPageCount() === 0) {
         return;
     }
@@ -108,9 +110,9 @@ export const savePDFTree = async (pdf: PDFTree, path: string, save: (path: strin
     const pdfBytes = await pdf.pdf.save();
 
     if (pdf.children.length === 0) {
-        save(`${path}/${title}.pdf`, pdfBytes);
+        save([...path, title], pdfBytes);
     } else {
-        save(`${path}/${title}/${title}.pdf`, pdfBytes);
+        save([...path, title, title], pdfBytes);
     }
 };
 

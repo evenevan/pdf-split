@@ -40,15 +40,17 @@ formElement.onsubmit = (async (event) => {
     const pdfLibPDF = await PDFDocument.load(await inputFile.arrayBuffer());
     outputElement.textContent += ' Generating sub-PDF files...';
     const sections = await outlineToSections(pdfjsPDF, outline, Number(levelElement.value));
-    console.log(sections);
+    // console.log(sections);
     const splitPDFs = await sectionToPDFTree(pdfLibPDF, sections);
-    console.log(splitPDFs);
+    // console.log(splitPDFs);
     const outputFiles: InputWithSizeMeta[] = [];
 
     outputElement.textContent += ' Creating zip...';
 
-    await savePDFTree(splitPDFs, '.', (path, bytes) => {
-        outputFiles.push({ name: path.replace(sections.title, ''), input: bytes });
+    await savePDFTree(splitPDFs, (path, bytes) => {
+        // illegal character handling would be here but it seems the library does that for me
+        const filePath = `./${path.slice(1).join('/')}.pdf`;
+        outputFiles.push({ name: filePath, input: bytes });
     });
 
     saveAs(await downloadZip(outputFiles).blob(), `${inputFile.name.replace('.pdf', '')}_split.zip`);
