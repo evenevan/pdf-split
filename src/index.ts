@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs';
 import { downloadZip, InputWithSizeMeta } from 'client-zip';
 import { saveAs } from 'file-saver';
-import { outlineToSections, savePDFTree, sectionToPDFTree } from './pdf-split';
+import { outlineToSections, savePDFTree, sectionToPageIndexes, sectionToPDFTree } from './pdf-split';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -44,6 +44,8 @@ formElement.onsubmit = (async (event) => {
     const splitPDFs = await sectionToPDFTree(pdfLibPDF, sections);
     // console.log(splitPDFs);
     const outputFiles: InputWithSizeMeta[] = [];
+
+    console.log(`Page Numbers: ${await sectionToPageIndexes(pdfLibPDF, sections)}`);
 
     outputElement.textContent += ' Creating zip...';
 

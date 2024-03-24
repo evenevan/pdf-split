@@ -79,6 +79,17 @@ export const itemToSection = async (pdf: pdfjs.PDFDocumentProxy, item: Item, end
     };
 };
 
+export const sectionToPageIndexes = async (pdf: PDFDocument, section: Section): Promise<number[]> => {
+    const firstIndexofCurrent = section.pages[0];
+    const pagesArr = (await Promise.all(section.children.map((child) => sectionToPageIndexes(pdf, child)))).flat();
+
+    if (firstIndexofCurrent) {
+        pagesArr.unshift(firstIndexofCurrent - 1);
+    }
+
+    return pagesArr;
+};
+
 export const sectionToPDFTree = async (pdf: PDFDocument, section: Section): Promise<PDFTree> => {
     const newPDF = await PDFDocument.create();
     newPDF.setTitle(section.title);
